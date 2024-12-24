@@ -1,4 +1,4 @@
-package cat
+package cats
 
 import (
 	"github.com/dangduoc08/gogo"

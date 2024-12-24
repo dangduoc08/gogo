@@ -6,6 +6,7 @@ import (
 
 	"github.com/dangduoc08/gogo"
 	"github.com/dangduoc08/gogo/common"
+	"github.com/dangduoc08/gogo/ctx"
 	"github.com/dangduoc08/gogo/exception"
 )
 
@@ -52,7 +53,7 @@ func (instance LoggingInterceptor) Intercept(c gogo.Context, aggregation gogo.Ag
 		datas = append(datas, "param", nil)
 	}
 
-	datas = append(datas, "X-Request-ID", c.GetID())
+	datas = append(datas, ctx.REQUEST_ID, c.GetID())
 	instance.Logger.Info(
 		"RequestData",
 		datas...,
@@ -66,34 +67,34 @@ func (instance LoggingInterceptor) Intercept(c gogo.Context, aggregation gogo.Ag
 				instance.Logger.Info(
 					"SuccessResponse",
 					"data", resJSONStr,
-					"X-Request-ID", c.GetID(),
+					ctx.REQUEST_ID, c.GetID(),
 				)
 			} else {
 				instance.Logger.Info(
 					"SuccessResponse",
 					"data", nil,
-					"X-Request-ID", c.GetID(),
+					ctx.REQUEST_ID, c.GetID(),
 				)
 			}
 			return data
 		}),
 		aggregation.Error(func(c gogo.Context, err any) any {
-			if httpException, ok := err.(exception.HTTPException); ok {
+			if exception, ok := err.(exception.Exception); ok {
 				instance.Logger.Debug(
 					"ErrorResponse",
 					"data", err,
-					"message", httpException.GetResponse(),
-					"X-Request-ID", c.GetID(),
+					"message", exception.GetResponse(),
+					ctx.REQUEST_ID, c.GetID(),
 				)
 			} else {
 				instance.Logger.Debug(
 					"ErrorResponse",
 					"data", err,
-					"X-Request-ID", c.GetID(),
+					ctx.REQUEST_ID, c.GetID(),
 				)
 			}
 
-			return err
+			return nil
 		}),
 	)
 }

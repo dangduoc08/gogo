@@ -1,4 +1,4 @@
-package cat
+package cats
 
 import (
 	"github.com/dangduoc08/gogo"
@@ -28,9 +28,6 @@ func (instance CatController) NewController() core.Controller {
 		CatExceptionFilter{},
 		instance.CREATE_VERSION_1,
 	)
-
-	instance.
-		Prefix("/cats")
 
 	return instance
 }
