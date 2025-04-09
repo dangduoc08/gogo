@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dangduoc08/gogo/common"
 	"github.com/dangduoc08/gogo/ctx"
 	"github.com/dangduoc08/gogo/utils"
 )
@@ -23,15 +24,6 @@ func ModuleBuilder() *moduleBuilder {
 		providers:   []Provider{},
 		controllers: []Controller{},
 	}
-}
-
-type RESTLayer struct {
-	handler        any
-	controllerPath string
-	name           string
-	route          string
-	version        string
-	method         string
 }
 
 // fix later
@@ -103,12 +95,13 @@ func (m *moduleBuilder) Build() *Module {
 	staticModules, dynamicModules := m.getModuleType()
 
 	module := &Module{
-		Mutex:                &sync.Mutex{},
-		staticModules:        staticModules,
-		dynamicModules:       dynamicModules,
-		providers:            m.providers,
-		controllers:          m.controllers,
-		Middleware:           &Middleware{},
+		Mutex:          &sync.Mutex{},
+		staticModules:  staticModules,
+		dynamicModules: dynamicModules,
+		providers:      m.providers,
+		controllers:    m.controllers,
+		Middleware:     &common.Middleware{},
+
 		RESTMiddlewares:      []RESTLayer{},
 		RESTGuards:           []RESTLayer{},
 		RESTInterceptors:     []RESTLayer{},

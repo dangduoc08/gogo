@@ -13,15 +13,11 @@ type Guarder interface {
 	CanActivate(*ctx.Context) bool
 }
 
-type GuardHandler struct {
-	Guarder  Guarder
-	Handlers []any
-}
-
 type RESTGuardItem struct {
 	Method  string
 	Route   string
 	Version string
+	Pattern string
 	Common  CommonItem
 }
 
@@ -33,6 +29,11 @@ type WSGuardItem struct {
 type GuardItem struct {
 	REST RESTGuardItem
 	WS   WSGuardItem
+}
+
+type GuardHandler struct {
+	Guarder  Guarder
+	Handlers []any
 }
 
 type Guard struct {
@@ -70,16 +71,10 @@ func (g *Guard) InjectProvidersIntoRESTGuards(r *REST, cb func(int, reflect.Type
 
 		guardHandler.Guarder = newGuarder.(Guarder)
 
-		shouldAddGuard := map[string]bool{}
 		for _, handler := range guardHandler.Handlers {
-			fnName := GetFnName(handler)
-			if pattern, ok := r.FnNameToPatternMap[fnName]; ok {
-				shouldAddGuard[pattern] = true
-			}
-		}
+			mainHandlerName := GetFnName(handler)
 
-		for pattern := range r.PatternToFnNameMap {
-			if _, ok := shouldAddGuard[pattern]; ok || len(shouldAddGuard) == 0 {
+			if pattern, ok := r.FnNameToPatternMap[mainHandlerName]; ok {
 				method, route, version := routing.PatternToMethodRouteVersion(pattern)
 				httpMethod := routing.OperationsMapHTTPMethods[method]
 
@@ -88,9 +83,11 @@ func (g *Guard) InjectProvidersIntoRESTGuards(r *REST, cb func(int, reflect.Type
 						Method:  httpMethod,
 						Route:   routing.ToEndpoint(route),
 						Version: version,
+						Pattern: pattern,
 						Common: CommonItem{
-							Handler: guardHandler.Guarder.CanActivate,
-							Name:    guarderType.String(),
+							Handler:         guardHandler.Guarder.CanActivate,
+							Name:            guarderType.String(),
+							MainHandlerName: r.PatternToFnNameMap[pattern],
 						},
 					},
 				})

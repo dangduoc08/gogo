@@ -14,15 +14,11 @@ type Interceptable interface {
 	Intercept(*ctx.Context, *aggregation.Aggregation) any
 }
 
-type InterceptorHandler struct {
-	Interceptable Interceptable
-	Handlers      []any
-}
-
 type RESTInterceptorItem struct {
 	Method  string
 	Route   string
 	Version string
+	Pattern string
 	Common  CommonItem
 }
 
@@ -34,6 +30,11 @@ type WSInterceptorItem struct {
 type InterceptorItem struct {
 	REST RESTInterceptorItem
 	WS   WSInterceptorItem
+}
+
+type InterceptorHandler struct {
+	Interceptable Interceptable
+	Handlers      []any
 }
 
 type Interceptor struct {
@@ -91,9 +92,11 @@ func (i *Interceptor) InjectProvidersIntoRESTInterceptors(r *REST, cb func(int, 
 						Method:  httpMethod,
 						Route:   routing.ToEndpoint(route),
 						Version: version,
+						Pattern: pattern,
 						Common: CommonItem{
-							Handler: interceptorHandler.Interceptable.Intercept,
-							Name:    interceptableType.String(),
+							Handler:         interceptorHandler.Interceptable.Intercept,
+							Name:            interceptableType.String(),
+							MainHandlerName: r.PatternToFnNameMap[pattern],
 						},
 					},
 				})

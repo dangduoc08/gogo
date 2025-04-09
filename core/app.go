@@ -352,6 +352,14 @@ func (app *App) Create(m *Module) {
 
 	// REST module middlewares
 	for _, restModuleMiddleware := range app.module.RESTMiddlewares {
+		fmt.Println("Middleware handler", restModuleMiddleware.handler)
+		fmt.Println("Middleware controllerPath", restModuleMiddleware.controllerPath)
+		fmt.Println("Middleware name", restModuleMiddleware.name)
+		fmt.Println("Middleware route", restModuleMiddleware.route)
+		fmt.Println("Middleware version", restModuleMiddleware.version)
+		fmt.Println("Middleware method", restModuleMiddleware.method)
+		fmt.Println("Middleware pattern", restModuleMiddleware.pattern)
+		fmt.Println("Middleware mainHandlerName", restModuleMiddleware.mainHandlerName)
 		httpMethod := routing.OperationsMapHTTPMethods[restModuleMiddleware.method]
 		middlewareHandlers := restModuleMiddleware.handler.(ctx.Handler)
 
@@ -1281,37 +1289,92 @@ func (app *App) serveContent(c *ctx.Context, lastWildcardSlashIndex int, dir any
 	}
 }
 
-// TODO:
-// exception filter co thể biết được nó thuộc main handler nào
 func (app *App) createDevtool() {
-	devtoolBuilder := devtool.NewDevtoolBuilder()
+	devtoolBuilder := devtool.DevtoolBuilder()
 
 	sort.Slice(app.module.RESTMainHandlers, func(i, j int) bool {
 		return app.module.RESTMainHandlers[i].route < app.module.RESTMainHandlers[j].route
 	})
 
-	// for _, restMiddleware := range app.module.RESTMiddlewares {
-	// 	fmt.Printf("%+v \n", restMiddleware.name)
-	// }
+	exceptionFiltersByPattern := generateLayersByPattern(app.module.RESTExceptionFilters)
+	middlewaresByPattern := generateLayersByPattern(app.module.RESTMiddlewares)
+	guardsByPattern := generateLayersByPattern(app.module.RESTGuards)
+	interceptorsByPattern := generateLayersByPattern(app.module.RESTInterceptors)
 
-	// for _, restExceptionFilter := range app.module.RESTExceptionFilters {
-	// 	fmt.Println("Exception filter name =", restExceptionFilter.name, restExceptionFilter.controllerPath, restExceptionFilter.method, restExceptionFilter.route, restExceptionFilter.version)
-	// }
+	for a, b := range middlewaresByPattern {
+		fmt.Println("pattern = ", a, "middleware = ", b)
+	}
 
-	// for _, restGuard := range app.module.RESTGuards {
-	// 	fmt.Println("Guard name =", restGuard.name)
-	// }
+	globExceptionFilters := utils.ArrMap(
+		app.globalExceptionFilters,
+		func(el common.ExceptionFilterable, i int) devtool.RESTLayer {
+			return devtool.RESTLayer{
+				Name:  reflect.TypeOf(el).String(),
+				Scope: devtool.GLOBAL_SCOPE,
+			}
+		},
+	)
 
-	// for _, restInterceptor := range app.module.RESTInterceptors {
-	// 	fmt.Println("Intercepto name =", restInterceptor.name)
-	// }
+	globGuards := utils.ArrMap(
+		app.globalGuarders,
+		func(el common.Guarder, i int) devtool.RESTLayer {
+			return devtool.RESTLayer{
+				Name:  reflect.TypeOf(el).String(),
+				Scope: devtool.GLOBAL_SCOPE,
+			}
+		},
+	)
+
+	globInterceptors := utils.ArrMap(
+		app.globalInterceptors,
+		func(el common.Interceptable, i int) devtool.RESTLayer {
+			return devtool.RESTLayer{
+				Name:  reflect.TypeOf(el).String(),
+				Scope: devtool.GLOBAL_SCOPE,
+			}
+		},
+	)
 
 	for _, moduleHandler := range app.module.RESTMainHandlers {
 		httpMethod := routing.OperationsMapHTTPMethods[moduleHandler.method]
+
+		exceptionFilters := utils.ArrMap(
+			exceptionFiltersByPattern[moduleHandler.pattern],
+			func(el *RESTLayer, i int) devtool.RESTLayer {
+				return devtool.RESTLayer{
+					Name:  el.name,
+					Scope: devtool.REQUEST_SCOPE,
+				}
+			},
+		)
+
+		guards := utils.ArrMap(
+			guardsByPattern[moduleHandler.pattern],
+			func(el *RESTLayer, i int) devtool.RESTLayer {
+				return devtool.RESTLayer{
+					Name:  el.name,
+					Scope: devtool.REQUEST_SCOPE,
+				}
+			},
+		)
+
+		interceptors := utils.ArrMap(
+			interceptorsByPattern[moduleHandler.pattern],
+			func(el *RESTLayer, i int) devtool.RESTLayer {
+				return devtool.RESTLayer{
+					Name:  el.name,
+					Scope: devtool.REQUEST_SCOPE,
+				}
+			},
+		)
+
 		restComponent := devtool.RESTComponent{
-			Handler:    moduleHandler.name,
-			HTTPMethod: httpMethod,
-			Route:      moduleHandler.route,
+			Handler:          moduleHandler.name,
+			HTTPMethod:       httpMethod,
+			Route:            moduleHandler.route,
+			ExceptionFilters: append(globExceptionFilters, exceptionFilters...),
+			Guards:           append(globGuards, guards...),
+			Interceptors:     append(globInterceptors, interceptors...),
 			Versioning: devtool.RESTVersioning{
 				Value: moduleHandler.version,
 				Key:   app.versioning.Key,
@@ -1347,4 +1410,8 @@ func (app *App) createDevtool() {
 
 	app.devtool = devtoolBuilder.Build()
 	app.devtool.Serve()
+
+	// js, _ := json.Marshal(app.devtool)
+
+	// fmt.Println(string(js))
 }

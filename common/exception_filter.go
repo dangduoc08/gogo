@@ -14,15 +14,11 @@ type ExceptionFilterable interface {
 	Catch(*ctx.Context, *exception.Exception)
 }
 
-type ExceptionFilterHandler struct {
-	ExceptionFilterable ExceptionFilterable
-	Handlers            []any
-}
-
 type RESTExceptionFilterItem struct {
 	Method  string
 	Route   string
 	Version string
+	Pattern string
 	Common  CommonItem
 }
 
@@ -34,6 +30,11 @@ type WSExceptionFilterItem struct {
 type ExceptionFilterItem struct {
 	REST RESTExceptionFilterItem
 	WS   WSExceptionFilterItem
+}
+
+type ExceptionFilterHandler struct {
+	ExceptionFilterable ExceptionFilterable
+	Handlers            []any
 }
 
 type ExceptionFilter struct {
@@ -89,9 +90,11 @@ func (e *ExceptionFilter) InjectProvidersIntoRESTExceptionFilters(r *REST, cb fu
 						Method:  httpMethod,
 						Route:   routing.ToEndpoint(route),
 						Version: version,
+						Pattern: pattern,
 						Common: CommonItem{
-							Handler: exceptionFilterHandler.ExceptionFilterable.Catch,
-							Name:    exceptionFilterableType.String(),
+							Handler:         exceptionFilterHandler.ExceptionFilterable.Catch,
+							Name:            exceptionFilterableType.String(),
+							MainHandlerName: r.PatternToFnNameMap[pattern],
 						},
 					},
 				})
